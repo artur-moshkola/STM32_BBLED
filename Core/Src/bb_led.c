@@ -5,7 +5,7 @@
 uint32_t bb_led_tck;
 
 uint8_t ihndlr;
-uint8_t (*bb_led_frame_handler)(void);
+uint8_t (*bb_led_frame_handler)(uint8_t);
 
 void bb_led_init(void) {
 	bb_led_tck = 0;
@@ -16,13 +16,14 @@ void bb_led_tick(void) {
 	if (tick - bb_led_tck < FRAME)
 		return;
 	bb_led_tck = tick;
-	bb_led_frame_handler();
-	if (bb_led_frame_handler())
+	if (bb_led_frame_handler(ihndlr))
 		ws2812_send_spi_DMA();
 	ihndlr = 0;
 }
 
-void bb_led_set_handler(uint8_t (*handler)(void)) {
+void bb_led_set_handler(uint8_t (*handler)(uint8_t)) {
+	if (bb_led_frame_handler == handler)
+		return;
 	ihndlr = 1;
 	bb_led_frame_handler = handler;
 }
@@ -38,28 +39,21 @@ uint32_t bb_led_no(uint32_t x, uint32_t y) {
  *                        129..104  100
  */
 
-uint8_t bb_led_fhdl_running(void) {
+uint8_t bb_led_fhdl_running(uint8_t init) {
 	static uint16_t frame;
-	if (ihndlr) frame = 0;
+	if (init) frame = 0;
 	uint8_t changed = 0;
-	uint32_t x;
-	uint32_t y;
+	static const ws2812_color colors[] = {
+		{ 128, 0, 0}, {0, 128, 0}, {0, 0, 128}
+	};
 	for (uint8_t i = 0; i < 9; i++) {
-		x = i*3+(frame % 3);
-	    if (x < BB_LED_W) {
-		    for (y = 0; y < BB_LED_H; y++)
-			   changed |= ws2812_set_led_step(bb_led_no(x, y), STEP, 128, 0, 0);
-	    }
-	    x = i*3+((frame+1) % 3);
-	    if (x < BB_LED_W) {
-	        for (y = 0; y < BB_LED_H; y++)
-	    	   changed |= ws2812_set_led_step(bb_led_no(x, y), STEP, 0, 128, 0);
-	    }
-	    x = i*3+((frame+2) % 3);
-	    if (x < BB_LED_W) {
-	        for (y = 0; y < BB_LED_H; y++)
-	    		changed |= ws2812_set_led_step(bb_led_no(x, y), STEP, 0, 0, 128);
-	    }
+		for (uint8_t j = 0; j < 3; j++) {
+			uint32_t x = i*3+((frame+j) % 3);
+			if (x < BB_LED_W) {
+				for (uint32_t y = 0; y < BB_LED_H; y++)
+				   changed |= ws2812_set_led_step(bb_led_no(x, y), STEP, colors[j]);
+			}
+		}
 	}
 
 	if (!changed)

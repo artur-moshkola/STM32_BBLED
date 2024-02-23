@@ -61,6 +61,57 @@ static void MX_SPI1_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+ws2812_color bb_led_chromafill_color;
+
+#define BB_LED_CHROMA_BTN_DEC_STEP 32
+#define BB_LED_CHROMA_BTN_INC_STEP 16
+#define BB_LED_CHROMA_FADE_STEP 1
+#define BB_LED_CHROMA_FADE_FRAMES 4
+#define BB_LED_CHROMA_MAX 128
+
+#define BB_LED_CHROMA_INC(COLOR, STEP) \
+	if ((bb_led_chromafill_color.COLOR > BB_LED_CHROMA_MAX) || ((BB_LED_CHROMA_MAX - bb_led_chromafill_color.COLOR) < STEP)) \
+		bb_led_chromafill_color.COLOR = BB_LED_CHROMA_MAX; \
+	else \
+		bb_led_chromafill_color.COLOR += STEP;
+
+#define BB_LED_CHROMA_DEC(COLOR, STEP) \
+	if (bb_led_chromafill_color.COLOR > STEP) \
+		bb_led_chromafill_color.COLOR -= STEP; \
+	else \
+		bb_led_chromafill_color.COLOR = 0;
+
+#define BB_LED_CHROMA_CMP(COLOR1, COLOR2) \
+	(COLOR1.R == COLOR2.R && COLOR1.G == COLOR2.G && COLOR1.B == COLOR2.B)
+
+uint8_t bb_led_fhdl_chromafill(uint8_t ihndlr) {
+	static uint8_t frame;
+	static ws2812_color prev;
+	if (ihndlr) {
+		frame = 0;
+		prev.R = prev.G = prev.B = 0;
+		bb_led_chromafill_color.R = bb_led_chromafill_color.G = bb_led_chromafill_color.B = BB_LED_CHROMA_MAX;
+	}
+
+	frame++;
+
+	if (!BB_LED_CHROMA_CMP(prev, bb_led_chromafill_color)) {
+		ws2812_set_all_leds(bb_led_chromafill_color);
+		prev = bb_led_chromafill_color;
+		return 1;
+	}
+
+	if (frame == BB_LED_CHROMA_FADE_FRAMES) {
+		frame = 0;
+
+		BB_LED_CHROMA_INC(R, BB_LED_CHROMA_FADE_STEP)
+		BB_LED_CHROMA_INC(G, BB_LED_CHROMA_FADE_STEP)
+		BB_LED_CHROMA_INC(B, BB_LED_CHROMA_FADE_STEP)
+	}
+
+	return 0;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -94,6 +145,7 @@ int main(void)
   MX_DMA_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
+
   ws2812_init();
   bb_blink_init();
   bb_keys_init();
@@ -106,6 +158,9 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   uint8_t failed = 0;
   uint32_t tick;
+
+  uint8_t bi = 0;
+  uint32_t btick;
   while (1)
   {
 	  tick = HAL_GetTick();
@@ -120,21 +175,38 @@ int main(void)
 	  bb_keys_tick();
 	  uint32_t keys_tick = HAL_GetTick();
 
-	  if (bb_keys_check_reset(0)) {
-		  if (bb_blink_pattern == 0xFFFFFFFF)
-			  bb_blink_pattern = 0b101;
-		  else
-			  bb_blink_pattern = 0xFFFFFFFF;
+	  if (bb_keys_check_reset(BTN_X)) {
+		  bb_blink_pattern = 0b101010;
+		  btick = tick; bi = 1;
+		  bb_led_set_handler(bb_led_fhdl_running);
 	  }
-	  if (bb_keys_check_reset(1)) {
-		  bb_blink_pattern >>= 2;
+	  if (bb_keys_check_reset(BTN_R)) {
+		  bb_blink_pattern = 0b10101010;
+		  btick = tick; bi = 1;
+		  bb_led_set_handler(bb_led_fhdl_chromafill);
+		  BB_LED_CHROMA_INC(R, BB_LED_CHROMA_BTN_INC_STEP)
+		  BB_LED_CHROMA_DEC(G, BB_LED_CHROMA_BTN_DEC_STEP)
+		  BB_LED_CHROMA_DEC(B, BB_LED_CHROMA_BTN_DEC_STEP)
 	  }
-	  if (bb_keys_check_reset(2)) {
-		  bb_blink_pattern = 0b101;
+	  if (bb_keys_check_reset(BTN_G)) {
+		  bb_blink_pattern = 0b1010101010;
+		  btick = tick; bi = 1;
+		  bb_led_set_handler(bb_led_fhdl_chromafill);
+		  BB_LED_CHROMA_DEC(R, BB_LED_CHROMA_BTN_DEC_STEP)
+		  BB_LED_CHROMA_INC(G, BB_LED_CHROMA_BTN_INC_STEP)
+		  BB_LED_CHROMA_DEC(B, BB_LED_CHROMA_BTN_DEC_STEP)
 	  }
-	  if (bb_keys_check_reset(3)) {
-		  bb_blink_pattern <<= 2;
-		  bb_blink_pattern |= 1;
+	  if (bb_keys_check_reset(BTN_B)) {
+		  bb_blink_pattern = 0b101010101010;
+		  btick = tick; bi = 1;
+		  bb_led_set_handler(bb_led_fhdl_chromafill);
+		  BB_LED_CHROMA_DEC(R, BB_LED_CHROMA_BTN_DEC_STEP)
+		  BB_LED_CHROMA_DEC(G, BB_LED_CHROMA_BTN_DEC_STEP)
+		  BB_LED_CHROMA_INC(B, BB_LED_CHROMA_BTN_INC_STEP)
+	  }
+	  if (bi && (HAL_GetTick() - btick > 5000)) {
+		  bi = 0;
+		  bb_blink_init();
 	  }
 
 	  uint32_t btn_tick = HAL_GetTick();

@@ -1,5 +1,10 @@
 #define BUTTONS 4
 
+#define BTN_X 0
+#define BTN_R 1
+#define BTN_G 2
+#define BTN_B 3
+
 static const struct {
 	GPIO_TypeDef* GPIOx;
 	uint16_t GPIO_Pin;

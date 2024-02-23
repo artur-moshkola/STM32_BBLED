@@ -41,20 +41,20 @@ void ws2812_send_spi_DMA(void) {
     HAL_SPI_Transmit_DMA(&WS2812_SPI_HANDLE, ws2812_buffer, WS2812_BUFFER_SIZE);
 }
 
-#define WS2812_SET_LED(LED_NO) \
-	ws2812_leds[LED_NO][WS2812_G] = g; \
-	ws2812_leds[LED_NO][WS2812_R] = r; \
-	ws2812_leds[LED_NO][WS2812_B] = b;
+#define WS2812_SET_LED(LED_NO, COLOR) \
+	ws2812_leds[LED_NO][WS2812_G] = COLOR.G; \
+	ws2812_leds[LED_NO][WS2812_R] = COLOR.R; \
+	ws2812_leds[LED_NO][WS2812_B] = COLOR.B;
 
-void ws2812_set_led(uint32_t led_no, uint8_t r, uint8_t g, uint8_t b) {
-	WS2812_SET_LED(led_no);
+void ws2812_set_led(uint32_t led_no, ws2812_color color) {
+	WS2812_SET_LED(led_no, color);
 }
 
-void ws2812_set_led_safe(uint32_t led_no, uint8_t r, uint8_t g, uint8_t b) {
+void ws2812_set_led_safe(uint32_t led_no, ws2812_color color) {
 	if (led_no >= WS2812_NUM_LEDS)
 		return;
 
-	WS2812_SET_LED(led_no)
+	WS2812_SET_LED(led_no, color)
 }
 
 #define WS2812_SET_LED_STEP_COLOR(LED_NO, COLOR_I, TARGET) \
@@ -65,21 +65,21 @@ void ws2812_set_led_safe(uint32_t led_no, uint8_t r, uint8_t g, uint8_t b) {
 	else \
 		ws2812_leds[LED_NO][COLOR_I] += (diff > -step) ? diff : -step;
 
-uint8_t ws2812_set_led_step(uint32_t led_no, uint8_t step, uint8_t r, uint8_t g, uint8_t b) {
+uint8_t ws2812_set_led_step(uint32_t led_no, uint8_t step, ws2812_color color) {
 	uint8_t changed = 0;
 	if (led_no >= WS2812_NUM_LEDS)
 		return changed;
 
 	int16_t diff;
-	WS2812_SET_LED_STEP_COLOR(led_no, WS2812_G, g)
-	WS2812_SET_LED_STEP_COLOR(led_no, WS2812_R, r)
-	WS2812_SET_LED_STEP_COLOR(led_no, WS2812_B, b)
+	WS2812_SET_LED_STEP_COLOR(led_no, WS2812_G, color.G)
+	WS2812_SET_LED_STEP_COLOR(led_no, WS2812_R, color.R)
+	WS2812_SET_LED_STEP_COLOR(led_no, WS2812_B, color.B)
 
 	return changed;
 }
 
-void ws2812_set_all_leds(uint8_t r, uint8_t g, uint8_t b) {
+void ws2812_set_all_leds(ws2812_color color) {
     for (uint16_t i = 0; i < WS2812_NUM_LEDS; i++) {
-    	WS2812_SET_LED(i)
+    	WS2812_SET_LED(i, color)
     }
 }
