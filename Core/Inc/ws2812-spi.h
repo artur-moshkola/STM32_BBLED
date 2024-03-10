@@ -1,3 +1,6 @@
+#ifndef WS2812
+#define WS2812
+
 #define WS2812_NUM_LEDS 104
 #define WS2812_SPI_HANDLE hspi1
 
@@ -26,3 +29,5 @@ void ws2812_set_led(uint32_t led_no, ws2812_color color);
 void ws2812_set_all_leds(ws2812_color color);
 void ws2812_set_led_safe(uint32_t led_no, ws2812_color color);
 uint8_t ws2812_set_led_step(uint32_t led_no, uint8_t step, ws2812_color color);
+
+#endif
